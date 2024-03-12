@@ -1,3 +1,5 @@
+const socket = io();
+
 const loginForm = document.getElementById('welcome-form');
 const messagesSection = document.getElementById('messages-section');
 const messagesList = document.getElementById('messages-list');
@@ -6,6 +8,17 @@ const userNameInput = document.getElementById('username');
 const messageContentInput = document.getElementById('message-content');
 
 let userName = '';
+
+socket.on('message', ({ author, content }) => addMessage(author, content))
+
+socket.on('newUser', (userName) => {
+    addMessage('Chat Bot', userName + ' has joined the conversation!', true);
+});
+
+socket.on('userLeft', (userName) => {
+    addMessage('Chat Bot', userName + ' has left the conversation... :(', true);
+});
+
 
 function login(event) {
     event.preventDefault();
@@ -19,25 +32,26 @@ function login(event) {
 
     userName = userNameValue;
 
+    socket.emit('join', userName);
     loginForm.classList.remove('show');
     messagesSection.classList.add('show');
 }
 
 loginForm.addEventListener('submit', login);
 
-function sendMessage(event) {
-    event.preventDefault()
-
-    const messageContent = messageContentInput.value.trim();
-
-    if (messageContent === '') {
-        alert('Please enter your message.');
-        return;
+function sendMessage(e) {
+    e.preventDefault();
+  
+    let messageContent = messageContentInput.value;
+  
+    if(!messageContent.length) {
+      alert('You have to type something!');
     }
-
-    addMessage(userName, messageContent);
-
-    messageContentInput.value = '';
+    else {
+      addMessage(userName, messageContent);
+      socket.emit('message', { author: userName, content: messageContent })
+      messageContentInput.value = '';
+    }
 }
 
 addMessageForm.addEventListener('submit', sendMessage);
@@ -47,6 +61,9 @@ function addMessage(author, content) {
     message.classList.add('message');
     message.classList.add('message--received');
     if(author === userName) message.classList.add('message--self');
+    if(author === 'Chat Bot') {
+        message.classList.add('message--bot');
+    }
     message.innerHTML = `
       <h3 class="message__author">${userName === author ? 'You' : author }</h3>
       <div class="message__content">
